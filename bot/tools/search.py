@@ -3,6 +3,7 @@ from typing import Any
 from openai import AsyncOpenAI
 from qdrant_client import QdrantClient
 
+from bot.stats import Stats
 from bot.tools.base import BaseTool
 
 
@@ -55,10 +56,12 @@ class SearchDocumentsTool(BaseTool):
         qdrant: QdrantClient,
         collection: str,
         embed_client: AsyncEmbeddingClient,
+        stats: Stats | None = None,
     ):
         self._qdrant = qdrant
         self._collection = collection
         self._embed = embed_client
+        self._stats = stats
 
     async def execute(self, **kwargs: Any) -> str:
         query: str = kwargs["query"]
@@ -73,7 +76,12 @@ class SearchDocumentsTool(BaseTool):
         )
 
         if not results.points:
+            if self._stats:
+                await self._stats.on_search(results_count=0)
             return "Релевантных документов не найдено."
+
+        if self._stats:
+            await self._stats.on_search(results_count=len(results.points))
 
         formatted = []
         for point in results.points:

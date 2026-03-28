@@ -15,6 +15,7 @@ from bot.config import Settings
 from bot.agent.history import ChatHistory
 from bot.agent.loop import Agent
 from bot.handlers.commands import setup_handlers
+from bot.stats import Stats
 from bot.tools.registry import ToolRegistry
 from bot.tools.search import AsyncEmbeddingClient, SearchDocumentsTool
 from shared.qdrant import make_qdrant_client
@@ -22,6 +23,10 @@ from shared.qdrant import make_qdrant_client
 
 async def main() -> None:
     settings = Settings()
+
+    # Statistics
+    stats = Stats(db_path="stats.db")
+    await stats.init()
 
     # LLM client (OpenRouter)
     llm = AsyncOpenAI(
@@ -42,7 +47,7 @@ async def main() -> None:
     # Tools
     tools = ToolRegistry()
     tools.register(
-        SearchDocumentsTool(qdrant, settings.qdrant_collection, embed_client)
+        SearchDocumentsTool(qdrant, settings.qdrant_collection, embed_client, stats)
     )
 
     # Agent
@@ -55,7 +60,7 @@ async def main() -> None:
         default=DefaultBotProperties(),
     )
     dp = Dispatcher()
-    dp.include_router(setup_handlers(agent))
+    dp.include_router(setup_handlers(agent, stats))
 
     logging.basicConfig(
         level=logging.INFO,
@@ -64,7 +69,10 @@ async def main() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
     logging.info("Starting NA Bot...")
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await stats.close()
 
 
 if __name__ == "__main__":
