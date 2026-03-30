@@ -23,7 +23,7 @@ class BookProfile:
 
 PROFILES: dict[str, BookProfile] = {
     "Базовый Текст.pdf": BookProfile(
-        title="Базовый Текст АН",
+        title="Анонимные Наркоманы",
         skip_pages={
             *range(1, 10),      # титульные листы, копирайт, содержание
             *range(262, 267),   # алфавитный указатель
